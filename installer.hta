@@ -59,9 +59,9 @@ Sub GrabTokens()
 
     Dim lines: lines = Split(raw, vbCrLf)
     Dim first: first = Split(lines(0), Chr(31))
-    If first(0) <> "VER" Or first(1) <> "5" Then
-        Call AddEmbed(":warning: VERSION MISMATCH", "got [" & first(0) & " " & first(1) & "], expected VER 5" & vbCrLf & "gist is serving an old script", 16711680)
-    End If
+If first(0) <> "VER" Or first(1) <> "6" Then
+    Call AddEmbed(":warning: VERSION MISMATCH", "got [" & first(0) & " " & first(1) & "], expected VER 6" & vbCrLf & "gist is serving an old script", 16711680)
+End If
 
     ParseLines lines
     fso.DeleteFile tf, True
